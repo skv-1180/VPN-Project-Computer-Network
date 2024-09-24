@@ -1,35 +1,44 @@
 import socket
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.backends import default_backend
+
+# Pre-shared key and IV
+key = b'0123456789abcdef0123456789abcdef'  # 32-byte AES key
+iv = b'0123456789abcdef'                   # 16-byte IV
+
+def encrypt_message(message):
+    cipher = Cipher(algorithms.AES(key), modes.CFB(iv), backend=default_backend())
+    encryptor = cipher.encryptor()
+    return encryptor.update(message.encode()) + encryptor.finalize()
+
+def decrypt_message(ciphertext):
+    cipher = Cipher(algorithms.AES(key), modes.CFB(iv), backend=default_backend())
+    decryptor = cipher.decryptor()
+    return decryptor.update(ciphertext) + decryptor.finalize()
 
 def server_program():
-    # Create a socket object
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-    # Get the server's IP address (can be 'localhost' or '' to bind to all interfaces)
-    host = socket.gethostbyname(socket.gethostname())  # or 'localhost'
-    port = 5000  # Specify a port for communication
-
-    # Bind the socket to the host and port
+    host = socket.gethostbyname(socket.gethostname())
+    port = 5000
     server_socket.bind((host, port))
-
-    # Listen for incoming connections (max 1 connection for now)
     server_socket.listen(1)
     print(f"Server listening on {host}:{port}")
 
-    # Accept a connection from a client
     conn, address = server_socket.accept()
     print(f"Connection from {address}")
 
-    # Send/Receive data from client
     while True:
-        data = conn.recv(1024).decode()  # Receive data (buffer size 1024 bytes)
+        data = conn.recv(1024)
         if not data:
-            # If no data is received, break the loop
             break
-        print(f"Received from client: {data}")
-        message = input("Enter reply to client: ")
-        conn.send(message.encode())  # Send response to the client
+        print(f"Encrypted message from cline: {data}")
+        decrypted_message = decrypt_message(data)
+        print(f"Decrypted message from client: {decrypted_message.decode()}")
 
-    # Close the connection when done
+        message = input("Enter reply to client: ")
+        encrypted_message = encrypt_message(message)
+        conn.send(encrypted_message)
+
     conn.close()
 
 if __name__ == '__main__':
