@@ -3,6 +3,7 @@ from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.backends import default_backend
+import struct  # Used for unpacking the custom packet
 
 # Generate RSA key pair (public and private keys)
 private_key = rsa.generate_private_key(
@@ -33,6 +34,12 @@ def decrypt_message(ciphertext, aes_key, iv):
     decryptor = cipher.decryptor()
     return decryptor.update(ciphertext) + decryptor.finalize()
 
+# Decapsulation: Extract the original message from the custom packet
+def decapsulate_message(packet):
+    protocol, payload_length = struct.unpack('!B I', packet[:5])  # Extract protocol and payload length
+    encrypted_message = packet[5:5 + payload_length]  # Extract the actual payload (encrypted message)
+    return encrypted_message
+
 def server_program():
     # Create socket object
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -62,17 +69,29 @@ def server_program():
 
     # Start communication using AES
     while True:
-        data = conn.recv(1024)
-        if not data:
+        packet = conn.recv(1024)
+        if not packet:
             break
-        decrypted_message = decrypt_message(data, aes_key, iv)
+
+        encrypted_message = decapsulate_message(packet)
+        decrypted_message = decrypt_message(encrypted_message, aes_key, iv)
         print(f"Decrypted message from client: {decrypted_message.decode()}")
 
         message = input("Enter reply to client: ")
-        encrypted_message = encrypt_message(message, aes_key, iv)
-        conn.send(encrypted_message)
+        encrypted_message_response = encrypt_message(message, aes_key, iv)
+        encapsulated_response = encapsulate_message(encrypted_message_response)
+        conn.send(encapsulated_response)
 
     conn.close()
+
+# Encapsulation: Create custom packet format
+def encapsulate_message(encrypted_message):
+    protocol = 1  # Custom protocol identifier
+    payload_length = len(encrypted_message)
+    
+    # Pack the data into binary format (protocol: 1 byte, length: 4 bytes, payload: variable length)
+    packet = struct.pack('!B I', protocol, payload_length) + encrypted_message
+    return packet
 
 if __name__ == '__main__':
     server_program()
