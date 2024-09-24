@@ -1,22 +1,40 @@
 import socket
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.primitives.asymmetric import rsa, padding
+from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.backends import default_backend
 
-# Pre-shared key and IV
-key = b'0123456789abcdef0123456789abcdef'  # 32-byte AES key
-iv = b'0123456789abcdef'                   # 16-byte IV
+# Generate RSA key pair (public and private keys)
+private_key = rsa.generate_private_key(
+    public_exponent=65537,
+    key_size=2048,
+    backend=default_backend()
+)
 
-def encrypt_message(message):
-    cipher = Cipher(algorithms.AES(key), modes.CFB(iv), backend=default_backend())
+# Function to decrypt AES key with RSA private key
+def rsa_decrypt(encrypted_key):
+    return private_key.decrypt(
+        encrypted_key,
+        padding.OAEP(
+            mgf=padding.MGF1(algorithm=hashes.SHA256()),
+            algorithm=hashes.SHA256(),
+            label=None
+        )
+    )
+
+# Encrypt and decrypt functions for AES
+def encrypt_message(message, aes_key, iv):
+    cipher = Cipher(algorithms.AES(aes_key), modes.CFB(iv), backend=default_backend())
     encryptor = cipher.encryptor()
     return encryptor.update(message.encode()) + encryptor.finalize()
 
-def decrypt_message(ciphertext):
-    cipher = Cipher(algorithms.AES(key), modes.CFB(iv), backend=default_backend())
+def decrypt_message(ciphertext, aes_key, iv):
+    cipher = Cipher(algorithms.AES(aes_key), modes.CFB(iv), backend=default_backend())
     decryptor = cipher.decryptor()
     return decryptor.update(ciphertext) + decryptor.finalize()
 
 def server_program():
+    # Create socket object
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     host = socket.gethostbyname(socket.gethostname())
     port = 5000
@@ -27,16 +45,31 @@ def server_program():
     conn, address = server_socket.accept()
     print(f"Connection from {address}")
 
+    # Step 1: Send the RSA public key to the client
+    public_key = private_key.public_key()
+    public_pem = public_key.public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo
+    )
+    conn.send(public_pem)
+    print("RSA public key sent to client")
+
+    # Step 2: Receive the encrypted AES key and IV from the client
+    encrypted_aes_key = conn.recv(256)  # Receiving encrypted AES key
+    aes_key = rsa_decrypt(encrypted_aes_key)
+    iv = conn.recv(16)  # Receiving IV (sent in plaintext for simplicity)
+    print("AES key and IV received and decrypted")
+
+    # Start communication using AES
     while True:
         data = conn.recv(1024)
         if not data:
             break
-        print(f"Encrypted message from cline: {data}")
-        decrypted_message = decrypt_message(data)
+        decrypted_message = decrypt_message(data, aes_key, iv)
         print(f"Decrypted message from client: {decrypted_message.decode()}")
 
         message = input("Enter reply to client: ")
-        encrypted_message = encrypt_message(message)
+        encrypted_message = encrypt_message(message, aes_key, iv)
         conn.send(encrypted_message)
 
     conn.close()
