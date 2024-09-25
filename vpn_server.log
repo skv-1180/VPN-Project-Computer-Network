@@ -1,0 +1,25 @@
+2024-09-25 08:49:40,897 - INFO - Server listening on 10.61.18.60:5000
+2024-09-25 08:50:18,114 - INFO - New connection accepted from ('10.61.18.60', 50969)
+2024-09-25 08:50:18,116 - INFO - New session created with ID: c939294a-d4f4-42aa-b57c-d0b1c194a7c1 for ('10.61.18.60', 50969)
+2024-09-25 08:50:18,117 - INFO - RSA public key sent to ('10.61.18.60', 50969)
+2024-09-25 08:50:18,132 - INFO - AES key and IV received from ('10.61.18.60', 50969)
+2024-09-25 08:50:46,366 - INFO - Decrypted message from ('10.61.18.60', 50969): HI
+2024-09-25 08:50:46,369 - INFO - Sent encrypted message to ('10.61.18.60', 50969)
+2024-09-25 08:52:27,104 - INFO - Decrypted message from ('10.61.18.60', 50969): IH
+2024-09-25 08:52:32,925 - INFO - Sent encrypted message to ('10.61.18.60', 50969)
+2024-09-25 08:52:42,254 - INFO - Decrypted message from ('10.61.18.60', 50969): Hello
+2024-09-25 08:52:49,188 - INFO - Sent encrypted message to ('10.61.18.60', 50969)
+2024-09-25 08:54:07,817 - INFO - Decrypted message from ('10.61.18.60', 50969): HI
+2024-09-25 08:54:14,817 - INFO - Sent encrypted message to ('10.61.18.60', 50969)
+2024-09-25 08:54:59,450 - INFO - Connection closed by ('10.61.18.60', 50969)
+2024-09-25 08:54:59,450 - INFO - Session c939294a-d4f4-42aa-b57c-d0b1c194a7c1 closed for ('10.61.18.60', 50969)
+2024-09-25 08:56:17,403 - INFO - New connection accepted from ('10.61.18.60', 51026)
+2024-09-25 08:56:17,404 - INFO - New session created with ID: 98d30c42-1702-4fa2-a832-8775f793a44d for ('10.61.18.60', 51026)
+2024-09-25 08:56:17,404 - INFO - RSA public key sent to ('10.61.18.60', 51026)
+2024-09-25 08:56:17,418 - INFO - AES key and IV received from ('10.61.18.60', 51026)
+2024-09-25 08:56:22,004 - INFO - Decrypted message from ('10.61.18.60', 51026): HI
+2024-09-25 08:56:28,408 - INFO - Sent encrypted message to ('10.61.18.60', 51026)
+2024-09-25 08:56:32,305 - INFO - Decrypted message from ('10.61.18.60', 51026): eixt
+2024-09-25 08:56:37,219 - INFO - Sent encrypted message to ('10.61.18.60', 51026)
+2024-09-25 08:56:43,394 - INFO - Connection closed by ('10.61.18.60', 51026)
+2024-09-25 08:56:43,394 - INFO - Session 98d30c42-1702-4fa2-a832-8775f793a44d closed for ('10.61.18.60', 51026)

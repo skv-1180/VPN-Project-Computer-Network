@@ -6,9 +6,14 @@ from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.backends import default_backend
 import struct
-import time  # For session timeout
+import time
+import logging
 
-# Session timeout in seconds (e.g., 300 seconds = 5 minutes)
+# Set up logging
+logging.basicConfig(filename='vpn_server.log', level=logging.INFO,
+                    format='%(asctime)s - %(levelname)s - %(message)s')
+
+# Session timeout in seconds
 SESSION_TIMEOUT = 30
 
 # Generate RSA key pair (public and private keys)
@@ -60,51 +65,58 @@ def encapsulate_message(encrypted_message):
 def handle_client(conn, address):
     session_id = str(uuid.uuid4())  # Generate unique session ID
     sessions[session_id] = [time.time(), conn, address]  # Store session start time
-    print(f"New session created with ID: {session_id} for {address}")
+    logging.info(f"New session created with ID: {session_id} for {address}")
 
-    # Step 1: Send the RSA public key to the client
-    public_key = private_key.public_key()
-    public_pem = public_key.public_bytes(
-        encoding=serialization.Encoding.PEM,
-        format=serialization.PublicFormat.SubjectPublicKeyInfo
-    )
-    conn.send(public_pem)
-    print(f"RSA public key sent to {address}")
+    try:
+        # Step 1: Send the RSA public key to the client
+        public_key = private_key.public_key()
+        public_pem = public_key.public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo
+        )
+        conn.send(public_pem)
+        logging.info(f"RSA public key sent to {address}")
 
-    # Step 2: Receive the encrypted AES key and IV from the client
-    encrypted_aes_key = conn.recv(256)  # Receiving encrypted AES key
-    aes_key = rsa_decrypt(encrypted_aes_key)
-    iv = conn.recv(16)  # Receiving IV (sent in plaintext for simplicity)
-    print(f"AES key and IV received from {address}")
+        # Step 2: Receive the encrypted AES key and IV from the client
+        encrypted_aes_key = conn.recv(256)  # Receiving encrypted AES key
+        aes_key = rsa_decrypt(encrypted_aes_key)
+        iv = conn.recv(16)  # Receiving IV (sent in plaintext for simplicity)
+        logging.info(f"AES key and IV received from {address}")
 
-    # Start communication using AES with session management
-    while True:
-        try:
-            packet = conn.recv(1024)
-            if not packet:
-                print(f"Connection closed by {address}")
+        # Start communication using AES with session management
+        while True:
+            try:
+                packet = conn.recv(1024)
+                if not packet:
+                    logging.info(f"Connection closed by {address}")
+                    break
+
+                # Update session timestamp
+                sessions[session_id][0] = time.time()
+
+                # Decapsulate and decrypt the received message
+                encrypted_message = decapsulate_message(packet)
+                decrypted_message = decrypt_message(encrypted_message, aes_key, iv)
+                logging.info(f"Decrypted message from {address}: {decrypted_message.decode()}")
+
+                # Send reply to the client
+                message = input(f"Enter reply to {address}: ")
+                encrypted_message_response = encrypt_message(message, aes_key, iv)
+                encapsulated_response = encapsulate_message(encrypted_message_response)
+                conn.send(encapsulated_response)
+                logging.info(f"Sent encrypted message to {address}")
+                
+            except socket.timeout:
+                logging.warning(f"Session {session_id} timed out due to inactivity.")
                 break
 
-            # Update session timestamp
-            sessions[session_id][0] = time.time()
-
-            # Decapsulate and decrypt the received message
-            encrypted_message = decapsulate_message(packet)
-            decrypted_message = decrypt_message(encrypted_message, aes_key, iv)
-            print(f"Decrypted message from {address}: {decrypted_message.decode()}")
-
-            # Send reply to the client
-            message = input(f"Enter reply to {address}: ")
-            encrypted_message_response = encrypt_message(message, aes_key, iv)
-            encapsulated_response = encapsulate_message(encrypted_message_response)
-            conn.send(encapsulated_response)
-        except socket.timeout:
-            print(f"Session {session_id} timed out due to inactivity.")
-            break
-
-    conn.close()
-    del sessions[session_id]  # Remove session once client disconnects
-    print(f"Session {session_id} closed for {address}")
+    except Exception as e:
+        logging.error(f"Error during session {session_id} with {address}: {e}")
+    
+    finally:
+        conn.close()
+        del sessions[session_id]  # Remove session once client disconnects
+        logging.info(f"Session {session_id} closed for {address}")
 
 def server_program():
     # Create socket object
@@ -113,11 +125,12 @@ def server_program():
     port = 5000
     server_socket.bind((host, port))
     server_socket.listen(5)  # Allow up to 5 clients to connect
-    print(f"Server listening on {host}:{port}")
+    logging.info(f"Server listening on {host}:{port}")
 
     while True:
         conn, address = server_socket.accept()
         conn.settimeout(SESSION_TIMEOUT)  # Set timeout for client sessions
+        logging.info(f"New connection accepted from {address}")
         client_thread = threading.Thread(target=handle_client, args=(conn, address))
         client_thread.start()  # Start a new thread for each client
 
