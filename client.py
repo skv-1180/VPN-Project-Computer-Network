@@ -43,7 +43,7 @@ def encapsulate_message(encrypted_message):
 # Decapsulate the received message
 def decapsulate_message(packet):
     protocol, payload_length = struct.unpack('!B I', packet[:5])  # Extract protocol and payload length
-    encrypted_message = packet[5:5+payload_length]  # Extract the actual payload (encrypted message)
+    encrypted_message = packet[5:5 + payload_length]  # Extract the actual payload (encrypted message)
     return encrypted_message
 
 def client_program():
@@ -69,17 +69,20 @@ def client_program():
 
     # Step 4: Start communication using AES with encapsulation
     while True:
-        message = input("Enter message to send to server: ")
+        message = input("Enter message to send to server (or 'exit' to quit): ")
         if message.lower() == 'exit':
             break
 
+        # Encrypt and encapsulate the message
         encrypted_message = encrypt_message(message, aes_key, iv)
         encapsulated_message = encapsulate_message(encrypted_message)
         client_socket.send(encapsulated_message)
 
+        # Receive and decapsulate the response
         packet = client_socket.recv(1024)
         encrypted_message_from_server = decapsulate_message(packet)
         decrypted_message = decrypt_message(encrypted_message_from_server, aes_key, iv)
+        
         try:
             print(f"Decrypted message from server: {decrypted_message.decode()}")
         except UnicodeDecodeError as e:
